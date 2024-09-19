@@ -17,6 +17,7 @@ package e2e
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -52,12 +53,18 @@ var _ = Describe("Operator upgrade with existing instances", func() {
 		const managerPodLabel = "control-plane=controller-manager"
 		const crName = "my-backstage-app"
 
-		// 0.1 is the version of the operator in the 1.1.x branch
-		var fromDeploymentManifest = filepath.Join(projectDir, "tests", "e2e", "testdata", "rhdh-operator-1.1.yaml")
+		var defaultFromDeploymentManifest = filepath.Join(projectDir, "tests", "e2e", "testdata", "rhdh-operator-1.2.yaml")
+		var fromDeploymentManifest string
 
 		BeforeEach(func() {
 			if testMode != defaultDeployTestMode {
 				Skip("testing upgrades currently supported only with the default deployment mode")
+			}
+
+			var manifestSet bool
+			fromDeploymentManifest, manifestSet = os.LookupEnv("START_VERSION_MANIFEST")
+			if !manifestSet {
+				fromDeploymentManifest = defaultFromDeploymentManifest
 			}
 
 			// Uninstall the current version of the operator (which was installed in the SynchronizedBeforeSuite),
@@ -86,7 +93,13 @@ metadata:
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Reason is DeployOK in 1.1.x, but was renamed to Deployed in 1.2
-			Eventually(helper.VerifyBackstageCRStatus, time.Minute, time.Second).WithArguments(ns, crName, `"reason":"DeployOK"`).Should(Succeed())
+			Eventually(helper.VerifyBackstageCRStatus, time.Minute, time.Second).
+				WithArguments(ns, crName,
+					SatisfyAny(
+						ContainSubstring(`"reason":"DeployOK"`),
+						ContainSubstring(`"reason":"Deployed"`),
+					),
+				).Should(Succeed())
 		})
 
 		AfterEach(func() {
@@ -104,7 +117,8 @@ metadata:
 			})
 
 			By("checking the status of the existing CR")
-			Eventually(helper.VerifyBackstageCRStatus, 5*time.Minute, 3*time.Second).WithArguments(ns, crName, `"reason":"Deployed"`).
+			Eventually(helper.VerifyBackstageCRStatus, 5*time.Minute, 3*time.Second).
+				WithArguments(ns, crName, ContainSubstring(`"reason":"Deployed"`)).
 				Should(Succeed(), func() string {
 					return fmt.Sprintf("=== Operator logs ===\n%s\n", getPodLogs(_namespace, managerPodLabel))
 				})

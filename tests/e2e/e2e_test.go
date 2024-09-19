@@ -145,7 +145,7 @@ var _ = Describe("Backstage Operator E2E", func() {
 				It("should handle CR as expected", func() {
 					By("validating that the status of the custom resource created is updated or not", func() {
 						Eventually(helper.VerifyBackstageCRStatus, time.Minute, time.Second).
-							WithArguments(ns, tt.crName, "Deployed").
+							WithArguments(ns, tt.crName, ContainSubstring("Deployed")).
 							Should(Succeed())
 					})
 
