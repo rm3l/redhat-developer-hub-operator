@@ -3,7 +3,7 @@ name: Build and push operator, bundle, and catalog images
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - rhdh-1.[0-9]+
       - 1.[0-9]+.x
@@ -87,17 +87,27 @@ jobs:
           fi
 
           export VERSION=${{ env.BASE_VERSION }}
+          export ORG=rhdh-community
+          export REGISTRY_ORG=${{ env.REGISTRY }}/${ORG}
+          export IMAGE_TAG_BASE=${REGISTRY_ORG}/operator
 
           set -ex
 
-          # build 4 container images with a 14d expiry
-          CONTAINER_TOOL=${CONTAINER_TOOL} VERSION=${VERSION} make release-build
+          # Do not expire images from release branches
+          CONTAINER_TOOL=${CONTAINER_TOOL} VERSION=${VERSION} LABEL=quay.expires-after=never make release-build
 
           # now copy images from local cache to quay, using 0.0.1-next-f00cafe, 0.0.1-next, and next tags
           for image in operator operator-bundle operator-catalog; do
-            podman push -q quay.io/rhdh-community/${image}:${VERSION} docker://quay.io/rhdh-community/${image}:${VERSION}
-            skopeo --insecure-policy copy --all docker://quay.io/rhdh-community/${image}:${VERSION} docker://quay.io/rhdh-community/${image}:${VERSION}-${{ env.SHORT_SHA }}
-            skopeo --insecure-policy copy --all docker://quay.io/rhdh-community/${image}:${VERSION} docker://quay.io/rhdh-community/${image}:${latestNext}
+            podman push -q ${REGISTRY_ORG}/${image}:${VERSION} docker://${REGISTRY_ORG}/${image}:${VERSION}
+            skopeo --insecure-policy copy --all docker://${REGISTRY_ORG}/${image}:${VERSION} docker://${REGISTRY_ORG}/${image}:${VERSION%.*}
+            skopeo --insecure-policy copy --all docker://${REGISTRY_ORG}/${image}:${VERSION} docker://${REGISTRY_ORG}/${image}:${latestNext}
+
+            # set expiration on tags with git sha
+            cat <<EOF | podman build -t ${REGISTRY_ORG}/${image}:${VERSION}-${{ env.SHORT_SHA }} -f - /tmp
+          FROM ${REGISTRY_ORG}/${image}:${VERSION}
+          LABEL quay.expires-after=14d
+          EOF
+            podman push -q ${REGISTRY_ORG}/${image}:${VERSION}-${{ env.SHORT_SHA }} docker://${REGISTRY_ORG}/${image}:${VERSION}-${{ env.SHORT_SHA }}
           done
         env:
           # to avoid throttling on RHD org, use GH token
