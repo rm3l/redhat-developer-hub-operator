@@ -52,7 +52,7 @@ var _ = Describe("Backstage Operator E2E", func() {
 			By("not creating a kube-rbac-proxy sidecar", func() {
 				Eventually(func(g Gomega) {
 					cmd := exec.Command(helper.GetPlatformTool(), "get",
-						"pods", "-l", "control-plane=controller-manager",
+						"pods", "-l", "app=rhdh-operator",
 						"-o", "jsonpath={.items[*].spec.containers[*].name}",
 						"-n", _namespace,
 					)
@@ -68,7 +68,7 @@ var _ = Describe("Backstage Operator E2E", func() {
 			var metricsServiceName string
 			Eventually(func(g Gomega) {
 				cmd := exec.Command(helper.GetPlatformTool(), "get", "services",
-					"-l", "control-plane=controller-manager",
+					"-l", "app=rhdh-operator",
 					"-l", "app.kubernetes.io/component=metrics",
 					"-o", "jsonpath={.items[*].metadata.name}",
 					"-n", _namespace,
@@ -263,6 +263,16 @@ subjects:
 				name:       "with custom DB auth secret",
 				crFilePath: filepath.Join("examples", "bs-existing-secret.yaml"),
 				crName:     "bs-existing-secret",
+			},
+			{
+				name:       "extra file mounts",
+				crFilePath: filepath.Join("examples", "filemounts.yaml"),
+				crName:     "my-rhdh-file-mounts",
+			},
+			{
+				name:       "raw-runtime-config",
+				crFilePath: filepath.Join("examples", "raw-runtime-config.yaml"),
+				crName:     "bs-raw-runtime-config",
 			},
 		} {
 			tt := tt

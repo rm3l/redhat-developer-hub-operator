@@ -36,7 +36,7 @@ var _ = Describe("Operator upgrade with existing instances", func() {
 
 	When("Previous version of operator is installed and CR is created", func() {
 
-		const managerPodLabel = "control-plane=controller-manager"
+		const managerPodLabel = "app=rhdh-operator"
 		const crName = "my-backstage-app"
 
 		var defaultFromDeploymentManifest = filepath.Join(projectDir, "tests", "e2e", "testdata", "rhdh-operator-1.4.yaml")
@@ -52,7 +52,7 @@ var _ = Describe("Operator upgrade with existing instances", func() {
 			uninstallOperator()
 
 			var manifestSet bool
-			fromDeploymentManifest, manifestSet = os.LookupEnv("START_VERSION_MANIFEST")
+			fromDeploymentManifest, manifestSet = os.LookupEnv("FROM_OPERATOR_MANIFEST")
 			if !manifestSet {
 				fromDeploymentManifest = defaultFromDeploymentManifest
 			}
@@ -84,16 +84,27 @@ metadata:
 		})
 
 		AfterEach(func() {
+			for _, m := range []string{"FROM", "TO"} {
+				if manifest := os.Getenv(m + "_OPERATOR_MANIFEST"); manifest != "" {
+					cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", manifest, "--ignore-not-found=true")
+					_, _ = helper.Run(cmd)
+				}
+			}
 			uninstallOperator()
 
 			cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", fromDeploymentManifest, "--ignore-not-found=true")
-			_, err := helper.Run(cmd)
-			Expect(err).ShouldNot(HaveOccurred())
+			_, _ = helper.Run(cmd)
 		})
 
 		It("should successfully reconcile existing CR when upgrading the operator", func() {
 			By("Upgrading the operator", func() {
-				installOperatorWithMakeDeploy(false)
+				if toOperatorManifest := os.Getenv("TO_OPERATOR_MANIFEST"); toOperatorManifest != "" {
+					cmd := exec.Command(helper.GetPlatformTool(), "apply", "-f", toOperatorManifest)
+					_, err := helper.Run(cmd)
+					Expect(err).ShouldNot(HaveOccurred())
+				} else {
+					installOperatorWithMakeDeploy(false)
+				}
 				EventuallyWithOffset(1, verifyControllerUp, 5*time.Minute, 3*time.Second).WithArguments(managerPodLabel).Should(Succeed())
 			})
 

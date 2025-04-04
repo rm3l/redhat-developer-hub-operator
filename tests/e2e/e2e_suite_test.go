@@ -152,21 +152,24 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	//runs *only* on process #1
 	fmt.Fprintln(GinkgoWriter, "isOpenshift:", helper.IsOpenShift())
 
-	managerPodLabel := "control-plane=controller-manager"
-
-	switch testMode {
-	case rhdhLatestTestMode, rhdhNextTestMode:
-		_namespace = "rhdh-operator"
-		managerPodLabel = installRhdhOperator(strings.TrimPrefix(testMode, "rhdh-"))
-	case rhdhAirgapTestMode:
-		_namespace = "rhdh-operator"
-		installRhdhOperatorAirgapped()
-	case olmDeployTestMode, defaultDeployTestMode:
-		helper.CreateNamespace(_namespace)
-		installOperatorWithMakeDeploy(testMode == olmDeployTestMode)
-	default:
-		Fail("unknown test mode: " + testMode)
-		return nil
+	managerPodLabel := "app=rhdh-operator"
+	if operatorManifest := os.Getenv("OPERATOR_MANIFEST"); operatorManifest != "" {
+		cmd := exec.Command(helper.GetPlatformTool(), "apply", "-f", operatorManifest)
+		_, err := helper.Run(cmd)
+		Expect(err).ShouldNot(HaveOccurred())
+	} else {
+		switch testMode {
+		case rhdhLatestTestMode, rhdhNextTestMode:
+			managerPodLabel = installRhdhOperator(strings.TrimPrefix(testMode, "rhdh-"))
+		case rhdhAirgapTestMode:
+			installRhdhOperatorAirgapped()
+		case olmDeployTestMode, defaultDeployTestMode:
+			helper.CreateNamespace(_namespace)
+			installOperatorWithMakeDeploy(testMode == olmDeployTestMode)
+		default:
+			Fail("unknown test mode: " + testMode)
+			return nil
+		}
 	}
 
 	By("validating that the controller-manager pod is running as expected")
@@ -219,13 +222,18 @@ func getPodLogs(ns string, label string) string {
 }
 
 func uninstallOperator() {
-	switch testMode {
-	case rhdhLatestTestMode, rhdhNextTestMode, rhdhAirgapTestMode:
-		uninstallRhdhOperator(testMode == rhdhAirgapTestMode)
-	case olmDeployTestMode, defaultDeployTestMode:
-		uninstallOperatorWithMakeUndeploy(testMode == olmDeployTestMode)
+	if operatorManifest := os.Getenv("OPERATOR_MANIFEST"); operatorManifest != "" {
+		cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", operatorManifest)
+		_, _ = helper.Run(cmd)
+	} else {
+		switch testMode {
+		case rhdhLatestTestMode, rhdhNextTestMode, rhdhAirgapTestMode:
+			uninstallRhdhOperator(testMode == rhdhAirgapTestMode)
+		case olmDeployTestMode, defaultDeployTestMode:
+			uninstallOperatorWithMakeUndeploy(testMode == olmDeployTestMode)
+		}
+		helper.DeleteNamespace(_namespace, true)
 	}
-	helper.DeleteNamespace(_namespace, true)
 }
 
 func uninstallRhdhOperator(withAirgap bool) {
