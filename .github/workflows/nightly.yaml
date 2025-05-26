@@ -70,6 +70,19 @@ jobs:
         with:
           addons: ingress
 
+      - name: Pre-pull images
+        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        continue-on-error: true
+        run: |
+          for img in quay.io/rhdh/rhdh-hub-rhel9:next quay.io/fedora/postgresql-15:latest; do
+            if ! minikube image ls | tail -n +2 | awk '{print $1 ":" $2}' | grep "${img}" >/dev/null; then
+              docker pull "${img}"
+              minikube image load "${img}"
+              docker image rm "${img}"
+            fi
+          done
+          minikube image ls
+
       - name: Build Ingress Domain
         if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
