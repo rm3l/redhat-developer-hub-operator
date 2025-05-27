@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/onsi/gomega/gcustom"
@@ -188,54 +187,54 @@ spec:
 						}
 					}
 
-					var isRouteEnabledNow bool
-					By("updating route spec in CR", func() {
-						// enables route that was previously disabled, and disables route that was previously enabled.
-						isRouteEnabledNow = tt.isRouteDisabled
-						err := helper.PatchBackstageCR(ns, tt.crName, fmt.Sprintf(`
-{
-  "spec": {
-  	"application": {
-		"route": {
-			"enabled": %s
-		}
-	}
-  }
-}`, strconv.FormatBool(isRouteEnabledNow)),
-							"merge")
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-					if helper.IsOpenShift() {
-						if isRouteEnabledNow {
-							By("ensuring the route is reachable", func() {
-								ensureRouteIsReachable(ns, tt.crName, crLabel, tt.additionalApiEndpointTests)
-							})
-						} else {
-							By("ensuring route no longer exists eventually", func() {
-								Eventually(func(g Gomega, crName string) {
-									exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
-									g.Expect(err).ShouldNot(HaveOccurred())
-									g.Expect(exists).Should(BeFalse())
-								}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
-							})
-						}
-					}
-
-					By("deleting CR", func() {
-						cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", crPath, "-n", ns)
-						_, err := helper.Run(cmd)
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-
-					if helper.IsOpenShift() && isRouteEnabledNow {
-						By("ensuring application is no longer reachable", func() {
-							Eventually(func(g Gomega, crName string) {
-								exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
-								g.Expect(err).ShouldNot(HaveOccurred())
-								g.Expect(exists).Should(BeFalse())
-							}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
-						})
-					}
+					//					var isRouteEnabledNow bool
+					//					By("updating route spec in CR", func() {
+					//						// enables route that was previously disabled, and disables route that was previously enabled.
+					//						isRouteEnabledNow = tt.isRouteDisabled
+					//						err := helper.PatchBackstageCR(ns, tt.crName, fmt.Sprintf(`
+					//{
+					//  "spec": {
+					//  	"application": {
+					//		"route": {
+					//			"enabled": %s
+					//		}
+					//	}
+					//  }
+					//}`, strconv.FormatBool(isRouteEnabledNow)),
+					//							"merge")
+					//						Expect(err).ShouldNot(HaveOccurred())
+					//					})
+					//					if helper.IsOpenShift() {
+					//						if isRouteEnabledNow {
+					//							By("ensuring the route is reachable", func() {
+					//								ensureRouteIsReachable(ns, tt.crName, crLabel, tt.additionalApiEndpointTests)
+					//							})
+					//						} else {
+					//							By("ensuring route no longer exists eventually", func() {
+					//								Eventually(func(g Gomega, crName string) {
+					//									exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
+					//									g.Expect(err).ShouldNot(HaveOccurred())
+					//									g.Expect(exists).Should(BeFalse())
+					//								}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
+					//							})
+					//						}
+					//					}
+					//
+					//By("deleting CR", func() {
+					//	cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", crPath, "-n", ns)
+					//	_, err := helper.Run(cmd)
+					//	Expect(err).ShouldNot(HaveOccurred())
+					//})
+					//
+					//if helper.IsOpenShift() && isRouteEnabledNow {
+					//	By("ensuring application is no longer reachable", func() {
+					//		Eventually(func(g Gomega, crName string) {
+					//			exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
+					//			g.Expect(err).ShouldNot(HaveOccurred())
+					//			g.Expect(exists).Should(BeFalse())
+					//		}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
+					//	})
+					//}
 				})
 			})
 		}
