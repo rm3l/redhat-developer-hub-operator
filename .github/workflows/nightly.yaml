@@ -70,6 +70,20 @@ jobs:
         with:
           addons: ingress
 
+      - name: Pre-pull images
+        # Useful (but not mandatory) so the operands can start faster, hence alleviating the time to wait in the actual tests
+        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        continue-on-error: true
+        run: |
+          for img in quay.io/rhdh/rhdh-hub-rhel9:next quay.io/fedora/postgresql-15:latest; do
+            if ! minikube image ls | tail -n +2 | awk '{print $1 ":" $2}' | grep "${img}" >/dev/null; then
+              docker pull "${img}"
+              minikube image load "${img}"
+              docker image rm "${img}"
+            fi
+          done
+          minikube image ls
+
       - name: Build Ingress Domain
         if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
@@ -82,7 +96,7 @@ jobs:
           SEALIGHTS_AGENT_TOKEN: '${{secrets.SEALIGHTS_AGENT_TOKEN}}' ## Make sure to add token to repo secrets
 
       - name: Download SeaLights Go agent and CLI tool
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
             echo "[SeaLights] Downloading SeaLights Golang & CLI Agents..."
             # Architectures available: darwin-amd64, darwin-arm64, linux-amd64, linux-arm64
@@ -98,13 +112,13 @@ jobs:
             ./slgoagent -v 2> /dev/null | grep version && ./slcli -v 2> /dev/null | grep version
 
       - name: Initiating the SeaLights agent
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
           echo "[SeaLights] Initiating the SeaLights agent to Golang and handing it the token"
           ./slcli config init --lang go --token ./sltoken.txt
 
       - name: Configuring SeaLights
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
           echo "[SeaLights] Configuring SeaLights to scan for main branch nightly"
           ./slcli config create-bsid --app rhdh-operator --branch ${{ matrix.branch }} --build "$BUILD_TIME:$LATEST_COMMIT_SHA"
@@ -112,7 +126,7 @@ jobs:
           LATEST_COMMIT_SHA: ${{ github.sha }}
 
       - name: Run SeaLights scan for tests
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
           echo "[SeaLights] Running the SeaLights scan"
           ./slcli scan --bsid buildSessionId.txt  --path-to-scanner ./slgoagent  --workspacepath "./" --scm git --scmBaseUrl https://github.com/redhat-developer/rhdh-operator --scmProvider github
@@ -131,9 +145,11 @@ jobs:
           # but the `make test` command tries to use it.
           make manifests generate fmt vet install
           make run &
+          MAKE_RUN_BG_PID=$!
+          echo "MAKE_RUN_BG_PID=${MAKE_RUN_BG_PID}" | tee -a $GITHUB_ENV
 
       - name: Create a Unit Tests session
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: ./slcli test start-stage --bsid=buildSessionId.txt --testStage "Unit Tests"
 
       - name: Test
@@ -142,7 +158,7 @@ jobs:
         run: make test
 
       - name: Create a Integration Tests session
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
           ./slcli test end-stage --bsid=buildSessionId.txt --executionId "Unit Tests"
           ./slcli test start-stage --bsid=buildSessionId.txt --testStage "Integration Tests"
@@ -151,10 +167,13 @@ jobs:
         if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         # run this stage only if there are changes that match the includes and not the excludes
         # perform it on backstage.io for speed
-        run: make integration-test PROFILE=backstage.io USE_EXISTING_CLUSTER=true USE_EXISTING_CONTROLLER=true
+        run: |
+          make integration-test PROFILE=backstage.io USE_EXISTING_CLUSTER=true USE_EXISTING_CONTROLLER=true
+          kill "${{ env.MAKE_RUN_BG_PID }}" || true
+          make uninstall
 
       - name: Create a E2E Tests session
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: |
           ./slcli test end-stage --bsid=buildSessionId.txt --executionId "Integration Tests"
           ./slcli test start-stage --bsid=buildSessionId.txt --testStage "E2E Tests"

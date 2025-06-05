@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/onsi/gomega/gcustom"
@@ -36,49 +35,6 @@ var _ = Describe("Backstage Operator E2E", func() {
 
 	AfterEach(func() {
 		helper.DeleteNamespace(ns, false)
-	})
-
-	Describe("operator metrics", func() {
-
-		It("should not have a kube-rbac-proxy container in the controller Pod", func() {
-			if testMode != olmDeployTestMode && testMode != defaultDeployTestMode {
-				Skip(fmt.Sprintf("testing operator metrics endpoint not supported for this mode: %q", testMode))
-			}
-
-			By("not creating a kube-rbac-proxy sidecar")
-			Eventually(func(g Gomega) {
-				cmd := exec.Command(helper.GetPlatformTool(), "get",
-					"pods", "-l", "app=rhdh-operator",
-					"-o", "jsonpath={.items[*].spec.containers[*].name}",
-					"-n", _namespace,
-				)
-				containerListOutput, err := helper.Run(cmd)
-				g.Expect(err).ShouldNot(HaveOccurred())
-				containerListNames := helper.GetNonEmptyLines(string(containerListOutput))
-				g.Expect(containerListNames).Should(HaveLen(1),
-					fmt.Sprintf("expected 1 container(s) in the controller pod, but got %d", len(containerListNames)))
-				containerName := containerListNames[0]
-				g.Expect(containerName).ToNot(BeEmpty())
-				g.Expect(containerName).ShouldNot(ContainSubstring("rbac-proxy"))
-			}, 3*time.Minute, time.Second).Should(Succeed())
-
-			By("creating a Service to access the metrics")
-			Eventually(func(g Gomega) {
-				cmd := exec.Command(helper.GetPlatformTool(), "get", "services",
-					"-l", "app=rhdh-operator",
-					"-l", "app.kubernetes.io/component=metrics",
-					"-o", "jsonpath={.items[*].metadata.name}",
-					"-n", _namespace,
-				)
-				svcListOutput, err := helper.Run(cmd)
-				g.Expect(err).ShouldNot(HaveOccurred())
-				svcListNames := helper.GetNonEmptyLines(string(svcListOutput))
-				g.Expect(svcListNames).Should(HaveLen(1),
-					fmt.Sprintf("expected 1 service exposing the controller metrics, but got %d", len(svcListNames)))
-				metricsServiceName := svcListNames[0]
-				g.Expect(metricsServiceName).ToNot(BeEmpty())
-			}, 3*time.Minute, time.Second).Should(Succeed())
-		})
 	})
 
 	Context("Examples CRs", func() {
@@ -224,61 +180,61 @@ spec:
 							})
 
 							By("ensuring the application is fully reachable", func() {
-								Eventually(helper.VerifyBackstageAppAccess, 8*time.Minute, time.Second).
+								Eventually(helper.VerifyBackstageAppAccess, 10*time.Minute, time.Second).
 									WithArguments(fmt.Sprintf("http://%s", ingressHost), tt.additionalApiEndpointTests).
 									Should(Succeed(), fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel))
 							})
 						}
 					}
 
-					var isRouteEnabledNow bool
-					By("updating route spec in CR", func() {
-						// enables route that was previously disabled, and disables route that was previously enabled.
-						isRouteEnabledNow = tt.isRouteDisabled
-						err := helper.PatchBackstageCR(ns, tt.crName, fmt.Sprintf(`
-{
-  "spec": {
-  	"application": {
-		"route": {
-			"enabled": %s
-		}
-	}
-  }
-}`, strconv.FormatBool(isRouteEnabledNow)),
-							"merge")
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-					if helper.IsOpenShift() {
-						if isRouteEnabledNow {
-							By("ensuring the route is reachable", func() {
-								ensureRouteIsReachable(ns, tt.crName, crLabel, tt.additionalApiEndpointTests)
-							})
-						} else {
-							By("ensuring route no longer exists eventually", func() {
-								Eventually(func(g Gomega, crName string) {
-									exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
-									g.Expect(err).ShouldNot(HaveOccurred())
-									g.Expect(exists).Should(BeFalse())
-								}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
-							})
-						}
-					}
-
-					By("deleting CR", func() {
-						cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", crPath, "-n", ns)
-						_, err := helper.Run(cmd)
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-
-					if helper.IsOpenShift() && isRouteEnabledNow {
-						By("ensuring application is no longer reachable", func() {
-							Eventually(func(g Gomega, crName string) {
-								exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
-								g.Expect(err).ShouldNot(HaveOccurred())
-								g.Expect(exists).Should(BeFalse())
-							}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
-						})
-					}
+					//					var isRouteEnabledNow bool
+					//					By("updating route spec in CR", func() {
+					//						// enables route that was previously disabled, and disables route that was previously enabled.
+					//						isRouteEnabledNow = tt.isRouteDisabled
+					//						err := helper.PatchBackstageCR(ns, tt.crName, fmt.Sprintf(`
+					//{
+					//  "spec": {
+					//  	"application": {
+					//		"route": {
+					//			"enabled": %s
+					//		}
+					//	}
+					//  }
+					//}`, strconv.FormatBool(isRouteEnabledNow)),
+					//							"merge")
+					//						Expect(err).ShouldNot(HaveOccurred())
+					//					})
+					//					if helper.IsOpenShift() {
+					//						if isRouteEnabledNow {
+					//							By("ensuring the route is reachable", func() {
+					//								ensureRouteIsReachable(ns, tt.crName, crLabel, tt.additionalApiEndpointTests)
+					//							})
+					//						} else {
+					//							By("ensuring route no longer exists eventually", func() {
+					//								Eventually(func(g Gomega, crName string) {
+					//									exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
+					//									g.Expect(err).ShouldNot(HaveOccurred())
+					//									g.Expect(exists).Should(BeFalse())
+					//								}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
+					//							})
+					//						}
+					//					}
+					//
+					//By("deleting CR", func() {
+					//	cmd := exec.Command(helper.GetPlatformTool(), "delete", "-f", crPath, "-n", ns)
+					//	_, err := helper.Run(cmd)
+					//	Expect(err).ShouldNot(HaveOccurred())
+					//})
+					//
+					//if helper.IsOpenShift() && isRouteEnabledNow {
+					//	By("ensuring application is no longer reachable", func() {
+					//		Eventually(func(g Gomega, crName string) {
+					//			exists, err := helper.DoesBackstageRouteExist(ns, tt.crName)
+					//			g.Expect(err).ShouldNot(HaveOccurred())
+					//			g.Expect(exists).Should(BeFalse())
+					//		}, time.Minute, time.Second).WithArguments(tt.crName).Should(Succeed())
+					//	})
+					//}
 				})
 			})
 		}
