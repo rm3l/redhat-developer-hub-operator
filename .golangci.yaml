@@ -1,0 +1,38 @@
+# Ref: https://golangci-lint.run/usage/configuration/#config-file
+# Example: https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
+
+# Defines the configuration version.
+# The only possible value is "2".
+version: "2"
+
+run:
+  # Timeout for analysis, e.g. 30s, 5m.
+  # Default: 1m
+  timeout: 15m
+
+linters:
+  # In v2, there are no exclusions by default.
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
+    rules:
+      - linters:
+          - staticcheck
+        path: 'integration_tests/(.+)\.go' # These are test files, so dot imports are okay
+        text: "ST1001: should not use dot imports"
+      - linters:
+          - staticcheck
+        path: 'tests/helper/(.+)\.go' # These are test files, so dot imports are okay
+        text: "ST1001: should not use dot imports"
+issues:
+  # Maximum issues count per one linter.
+  # Set to 0 to disable.
+  # Default: 50
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text.
+  # Set to 0 to disable.
+  # Default: 3
+  max-same-issues: 0

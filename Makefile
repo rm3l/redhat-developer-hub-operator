@@ -208,6 +208,10 @@ lint: golangci-lint ## Run golangci-lint linter & yamllint
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 	$(GOLANGCI_LINT) run --fix --timeout 15m
 
+.PHONY: lint-config-check
+lint-config-check: golangci-lint ## Run golangci-lint linter & yamllint
+	$(GOLANGCI_LINT) config verify -v
+
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
@@ -467,7 +471,7 @@ GINKGO ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 KUSTOMIZE_VERSION ?= v5.4.2
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 ENVTEST_VERSION ?= release-0.17
-GOLANGCI_LINT_VERSION ?= v1.64.8
+GOLANGCI_LINT_VERSION ?= v2.1.6
 GOIMPORTS_VERSION ?= v0.16.1
 GOSEC_VERSION ?= v2.20.0
 GINKGO_VERSION ?= v2.22.2
@@ -494,7 +498,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,${GOLANGCI_LINT_VERSION})
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,${GOLANGCI_LINT_VERSION})
 
 .PHONY: goimports
 goimports: $(GOIMPORTS) ## Download goimports locally if necessary.

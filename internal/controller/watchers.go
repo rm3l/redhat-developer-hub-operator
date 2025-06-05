@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	bs "github.com/redhat-developer/rhdh-operator/api/v1alpha3"
-	"github.com/redhat-developer/rhdh-operator/pkg/model"
-	"github.com/redhat-developer/rhdh-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	bs "github.com/redhat-developer/rhdh-operator/api/v1alpha3"
+	"github.com/redhat-developer/rhdh-operator/pkg/model"
+	"github.com/redhat-developer/rhdh-operator/pkg/utils"
 )
 
 func (r *BackstageReconciler) addWatchers(b *builder.Builder) error {
@@ -151,7 +152,7 @@ func (r *BackstageReconciler) requestByExtConfigLabel(ctx context.Context, objec
 	}
 
 	newHash := ec.WatchingHash
-	oldHash := deploy.Spec.Template.ObjectMeta.GetAnnotations()[model.ExtConfigHashAnnotation]
+	oldHash := deploy.Spec.Template.GetAnnotations()[model.ExtConfigHashAnnotation]
 	if newHash == oldHash {
 		lg.V(1).Info("request by label, hash are equal", "hash", newHash)
 		return []reconcile.Request{}

@@ -234,9 +234,10 @@ func BoolEnvVar(envvar string, def bool) bool {
 }
 
 func FilterContainers(allContainers []string, filter string) []string {
-	if filter == "*" {
+	switch filter {
+	case "*":
 		return allContainers
-	} else if filter == "" {
+	case "":
 		return nil
 	}
 
