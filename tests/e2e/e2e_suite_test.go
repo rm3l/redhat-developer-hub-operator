@@ -213,7 +213,7 @@ func verifyControllerUp(g Gomega, managerPodLabel string) {
 }
 
 func getPodLogs(ns string, label string) string {
-	cmd := exec.Command(helper.GetPlatformTool(), "logs", "-l", label, "-n", ns)
+	cmd := exec.Command(helper.GetPlatformTool(), "logs", "--all-containers", "-l", label, "-n", ns)
 	output, _ := helper.Run(cmd)
 	return string(output)
 }
