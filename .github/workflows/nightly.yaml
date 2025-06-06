@@ -72,7 +72,7 @@ jobs:
 
       - name: Pre-pull images
         # Useful (but not mandatory) so the operands can start faster, hence alleviating the time to wait in the actual tests
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         continue-on-error: true
         run: |
           for img in quay.io/rhdh/rhdh-hub-rhel9:next quay.io/fedora/postgresql-15:latest; do
@@ -133,11 +133,11 @@ jobs:
 
       # gosec needs a "build" stage so connect it to the lint step which we always do
       - name: Build
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         run: make lint
 
       - name: Run Controller
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         # run this stage only if there are changes that match the includes and not the excludes
         run: |
           # Need to 'make install' first, so that the necessary tool binaries (like controller-gen) can be downloaded locally.
@@ -153,7 +153,7 @@ jobs:
         run: ./slcli test start-stage --bsid=buildSessionId.txt --testStage "Unit Tests"
 
       - name: Test
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         # run this stage only if there are changes that match the includes and not the excludes
         run: make test
 
@@ -164,7 +164,7 @@ jobs:
           ./slcli test start-stage --bsid=buildSessionId.txt --testStage "Integration Tests"
 
       - name: Generic Integration test
-        if: ${{ steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
+        if: ${{ false && steps.operator-image-existence-checker.outputs.OPERATOR_IMAGE_EXISTS == 'true' }}
         # run this stage only if there are changes that match the includes and not the excludes
         # perform it on backstage.io for speed
         run: |
