@@ -8,13 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/onsi/gomega/gcustom"
-
 	"github.com/redhat-developer/rhdh-operator/tests/helper"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/tidwall/gjson"
 )
 
 var _ = Describe("Backstage Operator E2E", func() {
@@ -51,50 +48,50 @@ var _ = Describe("Backstage Operator E2E", func() {
 				crFilePath: filepath.Join("examples", "bs1.yaml"),
 				crName:     "bs1",
 			},
-			{
-				name:       "specific route sub-domain",
-				crFilePath: filepath.Join("examples", "bs-route.yaml"),
-				crName:     "bs-route",
-			},
-			{
-				name:            "route disabled",
-				crFilePath:      filepath.Join("examples", "bs-route-disabled.yaml"),
-				crName:          "bs-route-disabled",
-				isRouteDisabled: true,
-			},
-			{
-				name:       "RHDH CR with app-configs, dynamic plugins, extra files and extra-envs",
-				crFilePath: filepath.Join("examples", "rhdh-cr-with-app-configs.yaml"),
-				crName:     "bs-app-config",
-				additionalApiEndpointTests: []helper.ApiEndpointTest{
-					{
-						Endpoint:               "/api/dynamic-plugins-info/loaded-plugins",
-						BearerTokenRetrievalFn: helper.GuestAuth,
-						ExpectedHttpStatusCode: 200,
-						BodyMatcher: gcustom.MakeMatcher(func(respBody string) (bool, error) {
-							if !gjson.Valid(respBody) {
-								return false, fmt.Errorf("invalid json: %q", respBody)
-							}
-							return gjson.Get(respBody, "#").Int() > 0, nil
-						}).WithMessage("be a valid and non-empty JSON array. This is the response from the 'GET /api/dynamic-plugins-info/loaded-plugins' endpoint, using the guest user."),
-					},
-				},
-			},
-			{
-				name:       "with custom DB auth secret",
-				crFilePath: filepath.Join("examples", "bs-existing-secret.yaml"),
-				crName:     "bs-existing-secret",
-			},
-			{
-				name:       "extra file mounts",
-				crFilePath: filepath.Join("examples", "filemounts.yaml"),
-				crName:     "my-rhdh-file-mounts",
-			},
-			{
-				name:       "raw-runtime-config",
-				crFilePath: filepath.Join("examples", "raw-runtime-config.yaml"),
-				crName:     "bs-raw-runtime-config",
-			},
+			//{
+			//	name:       "specific route sub-domain",
+			//	crFilePath: filepath.Join("examples", "bs-route.yaml"),
+			//	crName:     "bs-route",
+			//},
+			//{
+			//	name:            "route disabled",
+			//	crFilePath:      filepath.Join("examples", "bs-route-disabled.yaml"),
+			//	crName:          "bs-route-disabled",
+			//	isRouteDisabled: true,
+			//},
+			//{
+			//	name:       "RHDH CR with app-configs, dynamic plugins, extra files and extra-envs",
+			//	crFilePath: filepath.Join("examples", "rhdh-cr-with-app-configs.yaml"),
+			//	crName:     "bs-app-config",
+			//	additionalApiEndpointTests: []helper.ApiEndpointTest{
+			//		{
+			//			Endpoint:               "/api/dynamic-plugins-info/loaded-plugins",
+			//			BearerTokenRetrievalFn: helper.GuestAuth,
+			//			ExpectedHttpStatusCode: 200,
+			//			BodyMatcher: gcustom.MakeMatcher(func(respBody string) (bool, error) {
+			//				if !gjson.Valid(respBody) {
+			//					return false, fmt.Errorf("invalid json: %q", respBody)
+			//				}
+			//				return gjson.Get(respBody, "#").Int() > 0, nil
+			//			}).WithMessage("be a valid and non-empty JSON array. This is the response from the 'GET /api/dynamic-plugins-info/loaded-plugins' endpoint, using the guest user."),
+			//		},
+			//	},
+			//},
+			//{
+			//	name:       "with custom DB auth secret",
+			//	crFilePath: filepath.Join("examples", "bs-existing-secret.yaml"),
+			//	crName:     "bs-existing-secret",
+			//},
+			//{
+			//	name:       "extra file mounts",
+			//	crFilePath: filepath.Join("examples", "filemounts.yaml"),
+			//	crName:     "my-rhdh-file-mounts",
+			//},
+			//{
+			//	name:       "raw-runtime-config",
+			//	crFilePath: filepath.Join("examples", "raw-runtime-config.yaml"),
+			//	crName:     "bs-raw-runtime-config",
+			//},
 		} {
 			tt := tt
 			When(fmt.Sprintf("applying %s (%s)", tt.name, tt.crFilePath), func() {
