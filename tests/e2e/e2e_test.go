@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/onsi/gomega/gcustom"
+	"github.com/tidwall/gjson"
+
 	"github.com/redhat-developer/rhdh-operator/tests/helper"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -40,6 +43,7 @@ var _ = Describe("Backstage Operator E2E", func() {
 			name                       string
 			crFilePath                 string
 			crName                     string
+			isForOpenshift             bool
 			isRouteDisabled            bool
 			additionalApiEndpointTests []helper.ApiEndpointTest
 		}{
@@ -48,40 +52,42 @@ var _ = Describe("Backstage Operator E2E", func() {
 				crFilePath: filepath.Join("examples", "bs1.yaml"),
 				crName:     "bs1",
 			},
-			//{
-			//	name:       "specific route sub-domain",
-			//	crFilePath: filepath.Join("examples", "bs-route.yaml"),
-			//	crName:     "bs-route",
-			//},
-			//{
-			//	name:            "route disabled",
-			//	crFilePath:      filepath.Join("examples", "bs-route-disabled.yaml"),
-			//	crName:          "bs-route-disabled",
-			//	isRouteDisabled: true,
-			//},
-			//{
-			//	name:       "RHDH CR with app-configs, dynamic plugins, extra files and extra-envs",
-			//	crFilePath: filepath.Join("examples", "rhdh-cr-with-app-configs.yaml"),
-			//	crName:     "bs-app-config",
-			//	additionalApiEndpointTests: []helper.ApiEndpointTest{
-			//		{
-			//			Endpoint:               "/api/dynamic-plugins-info/loaded-plugins",
-			//			BearerTokenRetrievalFn: helper.GuestAuth,
-			//			ExpectedHttpStatusCode: 200,
-			//			BodyMatcher: gcustom.MakeMatcher(func(respBody string) (bool, error) {
-			//				if !gjson.Valid(respBody) {
-			//					return false, fmt.Errorf("invalid json: %q", respBody)
-			//				}
-			//				return gjson.Get(respBody, "#").Int() > 0, nil
-			//			}).WithMessage("be a valid and non-empty JSON array. This is the response from the 'GET /api/dynamic-plugins-info/loaded-plugins' endpoint, using the guest user."),
-			//		},
-			//	},
-			//},
-			//{
-			//	name:       "with custom DB auth secret",
-			//	crFilePath: filepath.Join("examples", "bs-existing-secret.yaml"),
-			//	crName:     "bs-existing-secret",
-			//},
+			{
+				name:           "specific route sub-domain",
+				crFilePath:     filepath.Join("examples", "bs-route.yaml"),
+				crName:         "bs-route",
+				isForOpenshift: true,
+			},
+			{
+				name:            "route disabled",
+				crFilePath:      filepath.Join("examples", "bs-route-disabled.yaml"),
+				crName:          "bs-route-disabled",
+				isRouteDisabled: true,
+				isForOpenshift:  true,
+			},
+			{
+				name:       "RHDH CR with app-configs, dynamic plugins, extra files and extra-envs",
+				crFilePath: filepath.Join("examples", "rhdh-cr-with-app-configs.yaml"),
+				crName:     "bs-app-config",
+				additionalApiEndpointTests: []helper.ApiEndpointTest{
+					{
+						Endpoint:               "/api/dynamic-plugins-info/loaded-plugins",
+						BearerTokenRetrievalFn: helper.GuestAuth,
+						ExpectedHttpStatusCode: 200,
+						BodyMatcher: gcustom.MakeMatcher(func(respBody string) (bool, error) {
+							if !gjson.Valid(respBody) {
+								return false, fmt.Errorf("invalid json: %q", respBody)
+							}
+							return gjson.Get(respBody, "#").Int() > 0, nil
+						}).WithMessage("be a valid and non-empty JSON array. This is the response from the 'GET /api/dynamic-plugins-info/loaded-plugins' endpoint, using the guest user."),
+					},
+				},
+			},
+			{
+				name:       "with custom DB auth secret",
+				crFilePath: filepath.Join("examples", "bs-existing-secret.yaml"),
+				crName:     "bs-existing-secret",
+			},
 			//{
 			//	name:       "extra file mounts",
 			//	crFilePath: filepath.Join("examples", "filemounts.yaml"),
@@ -98,6 +104,9 @@ var _ = Describe("Backstage Operator E2E", func() {
 				var crPath string
 				var crLabel string
 				BeforeEach(func() {
+					if tt.isForOpenshift && !helper.IsOpenShift() {
+						Skip("Skipping OpenShift-only test on non OCP platform")
+					}
 					crPath = filepath.Join(projectDir, tt.crFilePath)
 					cmd := exec.Command(helper.GetPlatformTool(), "apply", "-f", crPath, "-n", ns)
 					_, err := helper.Run(cmd)
@@ -112,8 +121,8 @@ var _ = Describe("Backstage Operator E2E", func() {
 							WithArguments(ns, tt.crName, ContainSubstring(`"type":"Deployed"`)).
 							Should(Succeed(), func() string {
 								return fmt.Sprintf("%s\n---\n%s",
-									fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel)(),
-									describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel)(),
+									fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel),
+									describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel),
 								)
 							})
 					})
@@ -123,8 +132,8 @@ var _ = Describe("Backstage Operator E2E", func() {
 							WithArguments(ns, tt.crName, "Running").
 							Should(Succeed(), func() string {
 								return fmt.Sprintf("%s\n---\n%s",
-									fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel)(),
-									describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel)(),
+									fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel),
+									describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel),
 								)
 							})
 					})
@@ -140,8 +149,8 @@ var _ = Describe("Backstage Operator E2E", func() {
 									WithArguments(tt.crName).
 									ShouldNot(Succeed(), func() string {
 										return fmt.Sprintf("%s\n---\n%s",
-											fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel)(),
-											describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel)(),
+											fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel),
+											describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel),
 										)
 									})
 							})
@@ -196,8 +205,8 @@ spec:
 									WithArguments(fmt.Sprintf("http://%s", ingressHost), tt.additionalApiEndpointTests).
 									Should(Succeed(), func() string {
 										return fmt.Sprintf("%s\n---\n%s",
-											fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel)(),
-											describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel)(),
+											fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel),
+											describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel),
 										)
 									})
 							})
@@ -263,8 +272,8 @@ func ensureRouteIsReachable(ns string, crName string, crLabel string, additional
 		WithArguments(ns, crName, additionalApiEndpointTests).
 		Should(Succeed(), func() string {
 			return fmt.Sprintf("%s\n---\n%s",
-				fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel)(),
-				describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel)(),
+				fetchOperatorAndOperandLogs(managerPodLabel, ns, crLabel),
+				describeOperatorAndOperatorPods(managerPodLabel, ns, crLabel),
 			)
 		})
 }

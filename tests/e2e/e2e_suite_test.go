@@ -244,20 +244,16 @@ func fetchOperandLogs(ns string, crLabel string, raw bool) func() string {
 	}
 }
 
-func fetchOperatorAndOperandLogs(managerPodLabel string, ns string, crLabel string) func() string {
-	return func() string {
-		return fmt.Sprintf("%s\n\n%s\n",
-			fetchOperatorLogs(managerPodLabel, false)(),
-			fetchOperandLogs(ns, crLabel, false)())
-	}
+func fetchOperatorAndOperandLogs(managerPodLabel string, ns string, crLabel string) string {
+	return fmt.Sprintf("%s\n\n%s\n",
+		fetchOperatorLogs(managerPodLabel, false)(),
+		fetchOperandLogs(ns, crLabel, false)())
 }
 
-func describeOperatorAndOperatorPods(managerPodLabel string, ns string, crLabel string) func() string {
-	return func() string {
-		return fmt.Sprintf("%s\n\n%s\n",
-			describePod(_namespace, managerPodLabel),
-			describePod(ns, crLabel))
-	}
+func describeOperatorAndOperatorPods(managerPodLabel string, ns string, crLabel string) string {
+	return fmt.Sprintf("%s\n\n%s\n",
+		describePod(_namespace, managerPodLabel),
+		describePod(ns, crLabel))
 }
 
 func uninstallOperator() {
