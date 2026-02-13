@@ -242,6 +242,7 @@ PLATFORM ?= linux/amd64
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: image-build
 image-build: ## Build container image with the manager.
+	echo XXX some action
 	$(CONTAINER_TOOL) build --platform $(PLATFORM) -t $(IMG) --label $(LABEL) .
 
 .PHONY: image-push
